@@ -40,10 +40,12 @@ int main(int argc, char **argv) {
   for ( i = 0; i != max_iter && (res / init_res) > eps; ++i ) {
     
     // GS on odds
+#pragma omp parallel for
     for( n = 1; n <= N; n += 2 )
       u[n] = 0.5 * (h_sq + u[n-1] + u[n+1]);
 
     // GS on evens
+#pragma omp parallel for
     for( n = 2; n <= N; n += 2 )
       u[n] = 0.5 * (h_sq + u[n-1] + u[n+1]);
 
@@ -81,6 +83,7 @@ double residual_norm(double *u, int N, double inv_h_sq) {
   int i;
 
   // sum the squared error
+#pragma omp parallel for reduction(+:total) private(tmp)
   for ( i = 1; i <= N; i++ ) {
     tmp = 1 - ((2.0 * u[i] - u[i-1] - u[i+1]) * inv_h_sq);
     total += tmp * tmp;
