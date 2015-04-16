@@ -1,3 +1,4 @@
+#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -37,27 +38,33 @@ int main(int argc, char **argv) {
   init_res = residual_norm(u, N, inv_h_sq);
   res      = init_res;
 
+  int tid;
+  //#pragma omp parallel default(shared) private(i)
+  //  {
+  tid = omp_get_thread_num();
   // begin iterations
   for ( i = 0; i != max_iter && (res / init_res) > eps; ++i ) {
     
     // jacobi update
+#pragma omp parallel for
     for( n = 1; n <= N; n++ )
       u_update[n] = 0.5 * (h_sq + u[n-1] + u[n+1]);
 
     // copy back to u
+#pragma omp parallel for
     for( n = 1; n <= N; n++ )
       u[n] = u_update[n];
 
     // compute residual error
     res = residual_norm(u, N, inv_h_sq);
 
+
     // debug - error should decrease
-    if ( DEBUG && i % 20 == 0 ){
+    if ( DEBUG && i % 20 == 0 && tid == 0){
       printf("%d: %f\n", i, res );
     }
- 
   }
-
+  //  }
   // debug - n: x, exact solution, approx solution
   if ( DEBUG ) {
     for( n = 0; n <= N+1 && n < 50; n++ )
@@ -81,8 +88,8 @@ double residual_norm(double *u, int N, double inv_h_sq) {
 
   double tmp, total = 0.0;
   int i;
-
   // sum the squared error
+#pragma omp parallel for reduction(+:total) private(tmp)
   for ( i = 1; i <= N; i++ ) {
     tmp = 1 - ((2.0 * u[i] - u[i-1] - u[i+1]) * inv_h_sq);
     total += tmp * tmp;
